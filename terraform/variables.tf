@@ -1,11 +1,5 @@
 variable "project" {
   type = "string"
-  default = ""
-}
-
-variable "env" {
-  type = "string"
-  default = "local"
 }
 
 variable "billing_id" {
@@ -21,16 +15,12 @@ variable "region" {
   default = "us-east4"
 }
 
-variable "service_account_iam_roles" {
+variable "service_account_tools_iam_roles" {
   type = "list"
 
   default = [
-    "roles/resourcemanager.projectIamAdmin",
-    "roles/iam.serviceAccountAdmin",
-    "roles/iam.serviceAccountKeyAdmin",
-    "roles/iam.serviceAccountTokenCreator",
-    "roles/iam.serviceAccountUser",
-    "roles/viewer",
+    "roles/storage.objectViewer",
+    "roles/dns.admin",
   ]
 }
 
@@ -53,12 +43,12 @@ variable "kms_crypto_key_roles" {
 
 variable "instance_type" {
   type    = "string"
-  default = "n1-standard-1"
+  default = "n1-standard-2"
 }
 
 variable "kubernetes_version" {
   type    = "string"
-  default = "1.10.6-gke.1"
+  default = "1.10.7-gke.1"
 }
 
 variable "kubernetes_logging_service" {
@@ -86,7 +76,27 @@ variable "node_count" {
   default = "1"
 }
 
-variable "num_vault_pods" {
+variable "num_vault_servers" {
   type = "string"
-  default = "6"
+  default = "3"
+}
+
+variable "domain" {
+  type = "string"
+}
+
+variable "tools_project" {
+  type = "string"
+}
+
+variable "lets_encrypt_api" {
+  type = "string"
+  # Prod: acme-v02.api.letsencrypt.org
+  # Stage: acme-staging-v02.api.letsencrypt.org
+  default = "acme-staging-v02.api.letsencrypt.org"
+}
+
+variable "lets_encrypt_email" {
+  type = "string"
+  default = "no-reply@lzy.sh"
 }
