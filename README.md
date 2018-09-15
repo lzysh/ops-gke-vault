@@ -2,7 +2,7 @@
 Operations code for running [HashiCorp Vault](https://www.vaultproject.io) on [Google Kubernetes Engine GKE](https://cloud.google.com/kubernetes-engine) with [Terraform](https://www.terraform.io)
 
 # IaC 'Local' Development Setup on Linux
-## Install [Google Cloud SDK](https://cloud.google.com/sdk/docs/downloads-interactive#linux):
+## Install Google Cloud SDK
 ```none
 curl https://sdk.cloud.google.com | bash
 exec -l $SHELL
@@ -39,20 +39,20 @@ gcloud --project ops-tools-prod dns record-sets transaction execute -z=lzy-sh
 ```none
 gsutil mb -p ops-bcurtis-sb -c multi_regional -l US gs://ops-bcurtis-sb_tf_state
 ```
-## Install [Terraform](https://www.terraform.io/downloads.html):
+## Install Terraform:
 ```none
 curl -O https://releases.hashicorp.com/terraform/0.11.8/terraform_0.11.8_linux_amd64.zip
 sudo unzip terraform_0.11.8_linux_amd64.zip -d /usr/local/bin
 ```
-## Setup [Google Application Default Credentials](https://cloud.google.com/sdk/gcloud/reference/auth/application-default):
+## Setup Google Application Default Credentials
 ```none
 gcloud auth application-default login
 ```
-## Clone Project:
+## Clone Project
 ```none
 git clone git@github.com:lzysh/ops-gke-vault.git
 ```
-## Initialize Terraform and select workspace:
+## Initialize Terraform and select workspace
 ```none
 cd ops-gke-vault/terraform
 terraform init -backend-config="bucket=ops-bcurtis-sb_tf_state" -backend-config="project=ops-bcurtis-sb"
@@ -79,7 +79,7 @@ domain = "obs.lzy.sh"
 tools_project = "ops-bcurtis-sb"
 ```
 >NOTE: The folder_id variable will be the ID of the Sanbox folder your have the proper IAM roles set on.
-## Terraform Plan:
+## Terraform Plan
 ```none
 terraform plan -out="plan.out" -var-file="local.tfvars"
 terraform apply "plan.out"
