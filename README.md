@@ -1,7 +1,7 @@
 # ops-gke-vault
 Operations code for running [HashiCorp Vault](https://www.vaultproject.io) on [Google Kubernetes Engine GKE](https://cloud.google.com/kubernetes-engine) with [Terraform](https://www.terraform.io)
 
-# IaC 'Local' Development Setup on Linux
+# IaC Development Setup on Linux
 ## Install Google Cloud SDK
 ```none
 curl https://sdk.cloud.google.com | bash
