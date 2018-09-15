@@ -65,18 +65,9 @@ so if you run "terraform plan" Terraform will not see any existing state
 for this configuration.
 ```
 > NOTE: At this point you are setup to use [remote state](https://www.terraform.io/docs/state/remote.html) in Terraform. Use the workspace name printed out in the last command as your project name going forward.
-Create a `local.tfvars` file:
+Create a `local.tfvars` file and edit to fit you needs:
 ```none
-# Google Project ID
-project = "ops-vault-17252-sb"
-# Billing ID
-billing_id = "XXXXXX-XXXXXX-XXXXXX"
-# Sandbox Folder ID (in your team hierarchy)
-folder_id = "XXXXXXXXXXXX"
-# Domain Name
-domain = "obs.lzy.sh"
-# Google Project ID for Tools
-tools_project = "ops-bcurtis-sb"
+cp local.tfvars.EXAMPLE local.tfvars
 ```
 >NOTE: The folder_id variable will be the ID of the Sanbox folder your have the proper IAM roles set on.
 ## Terraform Plan
