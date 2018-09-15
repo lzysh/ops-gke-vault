@@ -1,8 +1,5 @@
 # ops-gke-vault
-<<<<<<< HEAD
-Operations code for running HashiCorp Vault on Google Kubernetes Engine (GKE)
-=======
-[HashiCorp Vault](https://www.vaultproject.io) on [Google Kubernetes Engine GKE](https://cloud.google.com/kubernetes-engine) with [Terraform](https://www.terraform.io)
+Operations code for running [HashiCorp Vault](https://www.vaultproject.io) on [Google Kubernetes Engine GKE](https://cloud.google.com/kubernetes-engine) with [Terraform](https://www.terraform.io)
 
 # IaC 'Local' Development Setup on Linux
 ## Install [Google Cloud SDK](https://cloud.google.com/sdk/docs/downloads-interactive#linux):
@@ -90,4 +87,3 @@ terraform apply "plan.out"
 It should take about 5-10 minutes for the Vault instance to be accessible. Ingress is doing its thing, DNS is being registered and SSL certificates are being created.
 
 The URL and command to decrypt the root token are in the Terraform output.
->>>>>>> This commit should support IaC development
