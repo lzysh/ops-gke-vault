@@ -75,6 +75,6 @@ cp local.tfvars.EXAMPLE local.tfvars
 terraform plan -out="plan.out" -var-file="local.tfvars"
 terraform apply "plan.out"
 ```
-It should take about 5-10 minutes for the Vault instance to be accessible. Ingress is doing its thing, DNS is being registered and SSL certificates are being created.
+It should take about 5-10 minutes for the Vault instance to be accessible. Ingress is doing its thing, DNS is being propagated and SSL certificates are being issued.
 
 The URL and command to decrypt the root token are in the Terraform output.
