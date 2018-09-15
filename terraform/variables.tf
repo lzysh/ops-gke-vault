@@ -11,7 +11,7 @@ variable "folder_id" {
 }
 
 variable "region" {
-  type = "string"
+  type    = "string"
   default = "us-east4"
 }
 
@@ -77,7 +77,7 @@ variable "node_count" {
 }
 
 variable "num_vault_servers" {
-  type = "string"
+  type    = "string"
   default = "3"
 }
 
@@ -91,12 +91,13 @@ variable "tools_project" {
 
 variable "lets_encrypt_api" {
   type = "string"
+
   # Prod: acme-v02.api.letsencrypt.org
   # Stage: acme-staging-v02.api.letsencrypt.org
   default = "acme-staging-v02.api.letsencrypt.org"
 }
 
 variable "lets_encrypt_email" {
-  type = "string"
+  type    = "string"
   default = "no-reply@lzy.sh"
 }

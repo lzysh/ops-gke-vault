@@ -6,13 +6,13 @@ provider "google" {
 }
 
 provider "kubernetes" {
-  version = "1.2"
+  version  = "1.2"
   host     = "${google_container_cluster.vault_cluster.endpoint}"
   username = "${google_container_cluster.vault_cluster.master_auth.0.username}"
   password = "${google_container_cluster.vault_cluster.master_auth.0.password}"
 
-  client_certificate = "${base64decode(google_container_cluster.vault_cluster.master_auth.0.client_certificate)}"
-  client_key = "${base64decode(google_container_cluster.vault_cluster.master_auth.0.client_key)}"
+  client_certificate     = "${base64decode(google_container_cluster.vault_cluster.master_auth.0.client_certificate)}"
+  client_key             = "${base64decode(google_container_cluster.vault_cluster.master_auth.0.client_key)}"
   cluster_ca_certificate = "${base64decode(google_container_cluster.vault_cluster.master_auth.0.cluster_ca_certificate)}"
 }
 
@@ -20,10 +20,10 @@ provider "kubernetes" {
 # https://www.terraform.io/docs/providers/google/r/google_project.html
 
 resource "google_project" "vault_project" {
-  name = "${var.project}"
-  project_id = "${var.project}"
+  name            = "${var.project}"
+  project_id      = "${var.project}"
   billing_account = "${var.billing_id}"
-  folder_id  = "folders/${var.folder_id}"
+  folder_id       = "folders/${var.folder_id}"
 }
 
 # Project Services Resource
@@ -31,33 +31,38 @@ resource "google_project" "vault_project" {
 # https://www.terraform.io/docs/providers/google/r/google_project_services.html
 
 resource "google_project_services" "vault_apis" {
- project = "${google_project.vault_project.project_id}"
- disable_on_destroy = false
- services = [
-   "dns.googleapis.com",
-   "cloudkms.googleapis.com",
-   "cloudresourcemanager.googleapis.com",
-   "container.googleapis.com",
-   "containerregistry.googleapis.com",
-   "stackdriver.googleapis.com",
-   # Enabled by a resource
-   "compute.googleapis.com",
-   "pubsub.googleapis.com",
-   "oslogin.googleapis.com",
-   # Default APIs
-   "bigquery-json.googleapis.com",
-   "cloudapis.googleapis.com",
-   "clouddebugger.googleapis.com",
-   "cloudtrace.googleapis.com",
-   "datastore.googleapis.com",
-   "logging.googleapis.com",
-   "monitoring.googleapis.com",
-   "servicemanagement.googleapis.com",
-   "serviceusage.googleapis.com",
-   "sql-component.googleapis.com",
-   "storage-api.googleapis.com",
-   "storage-component.googleapis.com"
- ]
+  project            = "${google_project.vault_project.project_id}"
+  disable_on_destroy = false
+
+  services = [
+    "dns.googleapis.com",
+    "cloudkms.googleapis.com",
+    "cloudresourcemanager.googleapis.com",
+    "container.googleapis.com",
+    "containerregistry.googleapis.com",
+    "stackdriver.googleapis.com",
+
+    # Enabled by a resource
+    "compute.googleapis.com",
+
+    "pubsub.googleapis.com",
+    "oslogin.googleapis.com",
+
+    # Default APIs
+    "bigquery-json.googleapis.com",
+
+    "cloudapis.googleapis.com",
+    "clouddebugger.googleapis.com",
+    "cloudtrace.googleapis.com",
+    "datastore.googleapis.com",
+    "logging.googleapis.com",
+    "monitoring.googleapis.com",
+    "servicemanagement.googleapis.com",
+    "serviceusage.googleapis.com",
+    "sql-component.googleapis.com",
+    "storage-api.googleapis.com",
+    "storage-component.googleapis.com",
+  ]
 }
 
 # Service Account Key Resource
@@ -79,7 +84,7 @@ resource "google_project_iam_member" "vault_tools_project_iam" {
   project = "${var.tools_project}"
   role    = "${element(var.service_account_tools_iam_roles, count.index)}"
   member  = "serviceAccount:${google_project.vault_project.number}-compute@developer.gserviceaccount.com"
- 
+
   depends_on = ["google_project_services.vault_apis"]
 }
 
@@ -106,7 +111,7 @@ resource "google_storage_bucket_iam_member" "vault_bucket_iam" {
   count  = "${length(var.storage_bucket_roles)}"
   bucket = "${google_storage_bucket.vault_bucket.name}"
   role   = "${element(var.storage_bucket_roles, count.index)}"
-  member  = "serviceAccount:${google_project.vault_project.number}-compute@developer.gserviceaccount.com"
+  member = "serviceAccount:${google_project.vault_project.number}-compute@developer.gserviceaccount.com"
 
   depends_on = ["google_project_services.vault_apis"]
 }
@@ -138,7 +143,7 @@ resource "google_kms_crypto_key_iam_member" "vault_key_iam" {
   count         = "${length(var.kms_crypto_key_roles)}"
   crypto_key_id = "${google_kms_crypto_key.vault_key.id}"
   role          = "${element(var.kms_crypto_key_roles, count.index)}"
-  member  = "serviceAccount:${google_project.vault_project.number}-compute@developer.gserviceaccount.com"
+  member        = "serviceAccount:${google_project.vault_project.number}-compute@developer.gserviceaccount.com"
 }
 
 # Kubernetes Engine (GKE) Resource
@@ -147,7 +152,7 @@ resource "google_kms_crypto_key_iam_member" "vault_key_iam" {
 resource "google_container_cluster" "vault_cluster" {
   name    = "vault-cluster-${var.region}"
   project = "${google_project.vault_project.project_id}"
-  region    = "${var.region}"
+  region  = "${var.region}"
 
   min_master_version = "${var.kubernetes_version}"
   node_version       = "${var.kubernetes_version}"
@@ -156,8 +161,9 @@ resource "google_container_cluster" "vault_cluster" {
 
   node_pool {
     name = "default-pool"
+
     node_config {
-      machine_type    = "${var.instance_type}"
+      machine_type = "${var.instance_type}"
 
       oauth_scopes = [
         "https://www.googleapis.com/auth/cloud-platform",
@@ -167,16 +173,16 @@ resource "google_container_cluster" "vault_cluster" {
         "https://www.googleapis.com/auth/monitoring",
       ]
     }
-    
+
     initial_node_count = "${var.node_count}"
- 
+
     autoscaling {
       min_node_count = "${var.min_node_count}"
       max_node_count = "${var.max_node_count}"
     }
-    
+
     management {
-      auto_repair = "true"
+      auto_repair  = "true"
       auto_upgrade = "false"
     }
   }
@@ -189,19 +195,19 @@ resource "google_container_cluster" "vault_cluster" {
 
 resource "kubernetes_namespace" "vault_ns" {
   metadata {
-      name = "vault"
+    name = "vault"
   }
 }
 
 resource "kubernetes_namespace" "external_dns_ns" {
   metadata {
-      name = "external-dns"
+    name = "external-dns"
   }
 }
 
 resource "kubernetes_namespace" "cert_manager_ns" {
   metadata {
-      name = "cert-manager"
+    name = "cert-manager"
   }
 }
 
@@ -210,13 +216,13 @@ resource "kubernetes_namespace" "cert_manager_ns" {
 
 resource "kubernetes_config_map" "vault_config_map" {
   metadata {
-    name = "vault"
+    name      = "vault"
     namespace = "${kubernetes_namespace.vault_ns.metadata.0.name}"
   }
 
   data {
-    gcs_bucket_name       = "${google_storage_bucket.vault_bucket.name}"
-    kms_key_id            = "${google_kms_crypto_key.vault_key.id}"
+    gcs_bucket_name = "${google_storage_bucket.vault_bucket.name}"
+    kms_key_id      = "${google_kms_crypto_key.vault_key.id}"
   }
 }
 
@@ -235,7 +241,7 @@ data "template_file" "cert_manager" {
   template = "${file("${path.module}/../k8s/cert-manager.yaml")}"
 
   vars {
-    lets_encrypt_api = "${var.lets_encrypt_api}"
+    lets_encrypt_api   = "${var.lets_encrypt_api}"
     lets_encrypt_email = "${var.lets_encrypt_email}"
   }
 }
@@ -244,13 +250,12 @@ data "template_file" "temp_tls" {
   template = "${file("${path.module}/../k8s/temp-tls.yaml")}"
 }
 
-
 data "template_file" "vault" {
   template = "${file("${path.module}/../k8s/vault.yaml")}"
 
   vars {
     num_vault_servers = "${var.num_vault_servers}"
-    domain = "${var.domain}"
+    domain            = "${var.domain}"
   }
 }
 
@@ -273,7 +278,7 @@ EOF
 
 resource "null_resource" "external_dns" {
   triggers {
-    config_sha1            = "${sha1(data.template_file.external_dns.rendered)}"
+    config_sha1 = "${sha1(data.template_file.external_dns.rendered)}"
   }
 
   provisioner "local-exec" {
@@ -296,15 +301,16 @@ echo "Pods are not ready after 2m"
 exit 1
     EOF
   }
+
   depends_on = [
-      "kubernetes_namespace.external_dns_ns",
-      "null_resource.clusterrole_binding"
+    "kubernetes_namespace.external_dns_ns",
+    "null_resource.clusterrole_binding",
   ]
 }
 
 resource "null_resource" "cert_manager" {
   triggers {
-    config_sha1            = "${sha1(data.template_file.cert_manager.rendered)}"
+    config_sha1 = "${sha1(data.template_file.cert_manager.rendered)}"
   }
 
   provisioner "local-exec" {
@@ -328,9 +334,10 @@ echo "Pods are not ready after 2m"
 exit 1
     EOF
   }
+
   depends_on = [
-      "kubernetes_namespace.cert_manager_ns",
-      "null_resource.clusterrole_binding"
+    "kubernetes_namespace.cert_manager_ns",
+    "null_resource.clusterrole_binding",
   ]
 }
 
@@ -345,14 +352,15 @@ echo '${data.template_file.temp_tls.rendered}' | kubectl apply --context="$CONTE
     sleep 10
     EOF
   }
+
   depends_on = [
-      "null_resource.cert_manager"
+    "null_resource.cert_manager",
   ]
 }
 
 resource "null_resource" "vault" {
   triggers {
-    config_sha1            = "${sha1(data.template_file.vault.rendered)}"
+    config_sha1 = "${sha1(data.template_file.vault.rendered)}"
   }
 
   provisioner "local-exec" {
@@ -375,10 +383,11 @@ echo "Pods are not ready after 2m"
 exit 1
     EOF
   }
+
   depends_on = [
-      "kubernetes_namespace.vault_ns",
-      "null_resource.external_dns",
-      "null_resource.temp_tls"
+    "kubernetes_namespace.vault_ns",
+    "null_resource.external_dns",
+    "null_resource.temp_tls",
   ]
 }
 
@@ -386,6 +395,6 @@ output "token_decrypt_command" {
   value = "gsutil cat gs://${google_storage_bucket.vault_bucket.name}/root-token.enc | base64 --decode | gcloud kms decrypt --project ${google_project.vault_project.project_id} --location global --keyring ${google_kms_key_ring.vault_kms.name} --key ${google_kms_crypto_key.vault_key.name} --ciphertext-file - --plaintext-file -"
 }
 
-output "vault_url" { 
+output "vault_url" {
   value = "https://vault.${var.domain}"
 }
