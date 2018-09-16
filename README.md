@@ -34,7 +34,7 @@ gcloud --project ops-tools-prod dns record-sets transaction execute -z=lzy-sh
 ```none
 gsutil mb -p ops-bcurtis-sb -c multi_regional -l US gs://ops-bcurtis-sb_tf_state
 ```
-## Install Terraform:
+## Install Terraform
 ```none
 curl -O https://releases.hashicorp.com/terraform/0.11.8/terraform_0.11.8_linux_amd64.zip
 sudo unzip terraform_0.11.8_linux_amd64.zip -d /usr/local/bin
@@ -67,6 +67,61 @@ terraform apply "plan.out"
 It will take about 5-10 minutes after terraform apply is successful for the Vault instance to be accessible. Ingress is doing its thing, DNS is being propagated and SSL certificates are being issued.
 
 The URL and command to decrypt the root token are in the Terraform output.
+
+## Install Vault Locally 
+```none
+curl -O https://releases.hashicorp.com/vault/0.11.1/vault_0.11.1_linux_amd64.zip
+sudo unzip vault_0.11.1_linux_amd64.zip -d /usr/local/bin
+```
+## Vault Testing Examples
+```none
+export VAULT_ADDR="$(terraform output url)"
+export VAULT_SKIP_VERIFY=true (Use for testing only)
+export VAULT_TOKEN="$(decrypted token)"
+```
+Enable KV2
+```none
+vault kv enable-versioning secret
+```
+Put/Get Secret
+```none
+vault kv put secret/my_team/api_key key=QWsDEr876d6s4wLKcjfLPxxuyRTE
+
+vault kv get secret/my_team/api_key
+====== Metadata ======
+Key              Value
+---              -----
+created_time     2018-09-16T04:04:50.14260161Z
+deletion_time    n/a
+destroyed        false
+version          1
+
+=== Data ===
+Key    Value
+---    -----
+key    QWsDEr876d6s4wLKcjfLPxxuyRTE
+```
+Put/Get Multi Value Secret
+```none
+vault kv put secret/my_team/db_info url=foo.example.com:35533 db_name=users username=admin password=passw0rd
+
+vault kv get secret/my_team/db_info
+====== Metadata ======
+Key              Value
+---              -----
+created_time     2018-09-16T04:09:55.452868097Z
+deletion_time    n/a
+destroyed        false
+version          1
+
+====== Data ======
+Key         Value
+---         -----
+db_name     users
+password    passw0rd
+url         foo.example.com:35533
+username    admin
+```
 ## Terraform Destroy
 ```none
 terraform destroy -var-file="local.tfvars" -var="project=ops-vault-${random}-sb"
