@@ -52,19 +52,12 @@ gcloud auth application-default login
 ```none
 git clone git@github.com:lzysh/ops-gke-vault.git
 ```
-## Initialize Terraform and select workspace
+## Initialize Terraform
 ```none
 cd ops-gke-vault/terraform
 terraform init -backend-config="bucket=ops-bcurtis-sb_tf_state" -backend-config="project=ops-bcurtis-sb"
-terraform workspace new ops-vault-$RANDOM-sb
-
-Created and switched to workspace "ops-vault-17252-sb"!
-
-You're now on a new, empty workspace. Workspaces isolate their state,
-so if you run "terraform plan" Terraform will not see any existing state
-for this configuration.
 ```
-> NOTE: At this point you are setup to use [remote state](https://www.terraform.io/docs/state/remote.html) in Terraform. Use the workspace name printed out in the last command as your project name going forward.
+> NOTE: At this point you are setup to use [remote state](https://www.terraform.io/docs/state/remote.html) in Terraform. 
 Create a `local.tfvars` file and edit to fit you needs:
 ```none
 cp local.tfvars.EXAMPLE local.tfvars
@@ -72,7 +65,7 @@ cp local.tfvars.EXAMPLE local.tfvars
 >NOTE: The folder_id variable will be the ID of the Sanbox folder your have the proper IAM roles set on.
 ## Terraform Plan
 ```none
-terraform plan -out="plan.out" -var-file="local.tfvars"
+terraform plan -out="plan.out" -var-file="local.tfvars" -var="project=ops-vault-$RANDOM-sb"
 terraform apply "plan.out"
 ```
 It should take about 5-10 minutes for the Vault instance to be accessible. Ingress is doing its thing, DNS is being propagated and SSL certificates are being issued.
