@@ -78,3 +78,6 @@ terraform apply "plan.out"
 It should take about 5-10 minutes for the Vault instance to be accessible. Ingress is doing its thing, DNS is being propagated and SSL certificates are being issued.
 
 The URL and command to decrypt the root token are in the Terraform output.
+
+
+*Some of the major differences in this fork is it's using external-dns to synchronize Kubernetes ingress resources with Google Cloud DNS as well as cert-manager to automate the management and issuance of TLS certificates from Let's Encrypt.*
