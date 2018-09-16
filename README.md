@@ -1,6 +1,5 @@
 # ops-gke-vault
 Operations code for running [HashiCorp Vault](https://www.vaultproject.io) on [Google Kubernetes Engine GKE](https://cloud.google.com/kubernetes-engine) with [Terraform](https://www.terraform.io)
-
 # IaC Development Setup on Linux
 ## Install Google Cloud SDK
 ```none
@@ -15,12 +14,10 @@ gcloud config set project ops-bcurtis-sb
 ```
 ## Create Managed DNS Zone
 *NOTE: You don't actually need to have a domain registrar for code to run, however it’s needed if you want to generate a usable application with DNS and a SSL certificate from Let’s Encrypt.*
-
 ```none
 gcloud dns managed-zones create obs-lzy-sh --description="My Sandbox Zone" --dns-name="obs.lzy.sh"
 ```
 ## Add Record Set to Your Tools Project Zone
-
 ```none
 $ gcloud dns record-sets list --zone obs-lzy-sh
 NAME          TYPE  TTL    DATA
@@ -28,13 +25,11 @@ obs.lzy.sh.  NS    21600  ns-cloud-a1.googledomains.com.,ns-cloud-a2.googledomai
 obs.lzy.sh.  SOA   21600  ns-cloud-a1.googledomains.com. cloud-dns-hostmaster.google.com. 1 21600 3600 259200 300
 ```
 This will show your NS record, grab the DATA and and create a NS record on your registrar. The next step needs to be completed by a user with DNS Administrator IAM role for the tools project.
-
 ```none
 gcloud --project ops-tools-prod dns record-sets transaction start -z=lzy-sh
 gcloud --project ops-tools-prod dns record-sets transaction add -z=lzy-sh --name="obs.lzy.sh." --type=NS --ttl=300 "ns-cloud-a1.googledomains.com." "ns-cloud-a2.googledomains.com." "ns-cloud-a3.googledomains.com." "ns-cloud-a4.googledomains.com."
 gcloud --project ops-tools-prod dns record-sets transaction execute -z=lzy-sh
 ```
-
 ## Create Bucket for Terraform Remote State
 ```none
 gsutil mb -p ops-bcurtis-sb -c multi_regional -l US gs://ops-bcurtis-sb_tf_state
@@ -63,14 +58,17 @@ Create a `local.tfvars` file and edit to fit you needs:
 cp local.tfvars.EXAMPLE local.tfvars
 ```
 >NOTE: The folder_id variable will be the ID of the Sanbox folder your have the proper IAM roles set on.
-## Terraform Plan
+## Terraform Plan & Apply
 ```none
-terraform plan -out="plan.out" -var-file="local.tfvars" -var="project=ops-vault-$RANDOM-sb"
+random=$RANDOM
+terraform plan -out="plan.out" -var-file="local.tfvars" -var="project=ops-vault-${random}-sb"
 terraform apply "plan.out"
 ```
-It should take about 5-10 minutes for the Vault instance to be accessible. Ingress is doing its thing, DNS is being propagated and SSL certificates are being issued.
+It will take about 5-10 minutes after terraform apply is successful for the Vault instance to be accessible. Ingress is doing its thing, DNS is being propagated and SSL certificates are being issued.
 
 The URL and command to decrypt the root token are in the Terraform output.
-
-
+## Terraform Destroy
+```none
+terraform destroy -var-file="local.tfvars" -var="project=ops-vault-${random}-sb"
+```
 *Some of the major differences in this fork is it's using external-dns to synchronize Kubernetes ingress resources with Google Cloud DNS as well as cert-manager to automate the management and issuance of TLS certificates from Let's Encrypt.*
