@@ -2,7 +2,7 @@
 # https://www.terraform.io/docs/providers/google/index.html
 
 provider "google" {
-  version = "1.17.1"
+  #  version = "1.17.1"
 }
 
 provider "kubernetes" {

@@ -1,10 +1,11 @@
-# Google Project ID
-project = "my-vault-cloud-project"
 # Billing ID
 billing_id = "XXXXXX-XXXXXX-XXXXXX"
+
 # Sandbox Folder ID (in your team hierarchy)
 folder_id = "XXXXXXXXXXXX"
+
 # Domain Name
 domain = "domain.com"
+
 # Google Project ID for Tools
 tools_project = "my-tools-cloud-project"

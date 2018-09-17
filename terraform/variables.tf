@@ -43,7 +43,7 @@ variable "kms_crypto_key_roles" {
 
 variable "instance_type" {
   type    = "string"
-  default = "n1-standard-2"
+  default = "n1-standard-1"
 }
 
 variable "kubernetes_version" {
@@ -68,7 +68,7 @@ variable "min_node_count" {
 
 variable "max_node_count" {
   type    = "string"
-  default = "4"
+  default = "3"
 }
 
 variable "node_count" {
@@ -78,7 +78,7 @@ variable "node_count" {
 
 variable "num_vault_servers" {
   type    = "string"
-  default = "3"
+  default = "1"
 }
 
 variable "domain" {
