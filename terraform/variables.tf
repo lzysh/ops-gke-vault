@@ -41,7 +41,7 @@ variable "kms_crypto_key_roles" {
   ]
 }
 
-variable "instance_type" {
+variable "machine_type" {
   type    = "string"
   default = "n1-standard-1"
 }

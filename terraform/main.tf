@@ -163,7 +163,7 @@ resource "google_container_cluster" "vault_cluster" {
     name = "default-pool"
 
     node_config {
-      machine_type = "${var.instance_type}"
+      machine_type = "${var.machine_type}"
 
       oauth_scopes = [
         "https://www.googleapis.com/auth/cloud-platform",
