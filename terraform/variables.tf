@@ -99,5 +99,4 @@ variable "lets_encrypt_api" {
 
 variable "lets_encrypt_email" {
   type    = "string"
-  default = "no-reply@lzy.sh"
 }
