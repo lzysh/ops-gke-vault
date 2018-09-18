@@ -103,9 +103,9 @@ key    QWsDEr876d6s4wLKcjfLPxxuyRTE
 ```
 Put/Get Multi Value Secret
 ```none
-vault kv put secret/my_team/db_info url=foo.example.com:35533 db_name=users username=admin password=passw0rd
+vault kv put secret/my_team/pre-prod/db_info url=foo.example.com:35533 db_name=users username=admin password=passw0rd
 
-vault kv get secret/my_team/db_info
+vault kv get secret/my_team/pre-prod/db_info
 ====== Metadata ======
 Key              Value
 ---              -----
