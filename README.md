@@ -85,9 +85,9 @@ vault kv enable-versioning secret
 ```
 Put/Get Secret
 ```none
-vault kv put secret/my_team/api_key key=QWsDEr876d6s4wLKcjfLPxxuyRTE
+vault kv put secret/my_team/pre-prod/api_key key=QWsDEr876d6s4wLKcjfLPxxuyRTE
 
-vault kv get secret/my_team/api_key
+vault kv get secret/my_team/pre-prod/api_key
 ====== Metadata ======
 Key              Value
 ---              -----
