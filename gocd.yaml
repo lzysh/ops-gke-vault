@@ -4,18 +4,107 @@ format_version: 2
 environments:
   pre-prod:
     pipelines:
-      - vault-exp
       - vault-acc
+      - vault-exp
   prod:
     pipelines:
       - vault-prod
 pipelines:
+  vault-acc:
+    group: vault
+    materials:
+      git-ops-gke-vault:  # this is the name of material
+        # type of material and url
+        git: git@github.com:lzysh/ops-gke-vault.git
+    environment_variables:
+      GOOGLE_TOOLS_PROJECT: ops-tools-prod
+    lock_behavior: unlockWhenFinished
+    stages:
+      - plan:
+          jobs:
+            run:
+              elastic_profile_id: k8s-gcloud-pre-prod
+              tasks:
+                - exec:
+                    command: bash
+                    working_directory: terraform
+                    arguments:
+                      - -c
+                      - >-
+                        terraform init
+                        -backend-config="bucket=${GOOGLE_TOOLS_PROJECT}-pre-prod_tf_state"
+                        -backend-config="project=${GOOGLE_TOOLS_PROJECT}"
+                - exec:
+                    command: bash
+                    working_directory: terraform
+                    arguments:
+                      - -c
+                      - >-
+                        terraform workspace select shared-vault-acc ||
+                        terraform workspace new shared-vault-acc
+                - exec:
+                    command: bash
+                    working_directory: terraform
+                    arguments:
+                      - -c
+                      - terraform plan
+                        -out="plan.out"
+                        -var-file="acc.tfvars"
+                        -var="project=shared-vault-acc"
+                        -var="host=vault"
+                        -var="dns_project=tst-tools-prod"
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar cfvzp terraform.tar.gz terraform
+              artifacts:
+                - build:
+                    source: terraform.tar.gz
+                    destination: artifacts/
+      - apply:
+          approval: 
+            type: manual
+            roles:
+              - vault-operator
+          jobs:
+            run:
+              elastic_profile_id: k8s-gcloud-pre-prod
+              tasks:
+                - fetch:
+                    pipeline: vault-acc
+                    stage: plan
+                    job: run
+                    is_file: "yes"
+                    source: artifacts/terraform.tar.gz
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar xfvzp terraform.tar.gz
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - >-
+                        gcloud auth activate-service-account
+                        --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+                - exec:
+                    command: bash
+                    working_directory: terraform
+                    arguments:
+                      - -c
+                      - terraform apply "plan.out"
+
   vault-exp:
     group: vault
     materials:
       git-ops-gke-vault:  # this is the name of material
         # type of material and url
         git: git@github.com:lzysh/ops-gke-vault.git
+      pipeline-vault-acc:
+        pipeline: vault-acc
+        stage: apply
     environment_variables:
       GOOGLE_TOOLS_PROJECT: ops-tools-prod
     stages:
@@ -133,94 +222,6 @@ pipelines:
                         -var="host=vault-${GO_PIPELINE_COUNTER}"
                         -var="dns_project=tst-tools-prod"
 
-  vault-acc:
-    group: vault
-    materials:
-      git-ops-gke-vault:  # this is the name of material
-        # type of material and url
-        git: git@github.com:lzysh/ops-gke-vault.git
-      pipeline-vault-exp:
-        pipeline: vault-exp
-        stage: apply
-    environment_variables:
-      GOOGLE_TOOLS_PROJECT: ops-tools-prod
-    lock_behavior: unlockWhenFinished
-    stages:
-      - plan:
-          jobs:
-            run:
-              elastic_profile_id: k8s-gcloud-pre-prod
-              tasks:
-                - exec:
-                    command: bash
-                    working_directory: terraform
-                    arguments:
-                      - -c
-                      - >-
-                        terraform init
-                        -backend-config="bucket=${GOOGLE_TOOLS_PROJECT}-pre-prod_tf_state"
-                        -backend-config="project=${GOOGLE_TOOLS_PROJECT}"
-                - exec:
-                    command: bash
-                    working_directory: terraform
-                    arguments:
-                      - -c
-                      - >-
-                        terraform workspace select shared-vault-acc ||
-                        terraform workspace new shared-vault-acc
-                - exec:
-                    command: bash
-                    working_directory: terraform
-                    arguments:
-                      - -c
-                      - terraform plan
-                        -out="plan.out"
-                        -var-file="acc.tfvars"
-                        -var="project=shared-vault-acc"
-                        -var="host=vault"
-                        -var="dns_project=tst-tools-prod"
-                - exec:
-                    command: bash
-                    arguments:
-                      - -c
-                      - tar cfvzp terraform.tar.gz terraform
-              artifacts:
-                - build:
-                    source: terraform.tar.gz
-                    destination: artifacts/
-      - apply:
-          approval: 
-            type: manual
-            roles:
-              - vault-operator
-          jobs:
-            run:
-              elastic_profile_id: k8s-gcloud-pre-prod
-              tasks:
-                - fetch:
-                    pipeline: vault-acc
-                    stage: plan
-                    job: run
-                    is_file: "yes"
-                    source: artifacts/terraform.tar.gz
-                - exec:
-                    command: bash
-                    arguments:
-                      - -c
-                      - tar xfvzp terraform.tar.gz
-                - exec:
-                    command: bash
-                    arguments:
-                      - -c
-                      - >-
-                        gcloud auth activate-service-account
-                        --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
-                - exec:
-                    command: bash
-                    working_directory: terraform
-                    arguments:
-                      - -c
-                      - terraform apply "plan.out"
 
   vault-prod:
     group: vault

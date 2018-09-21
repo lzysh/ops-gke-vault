@@ -41,6 +41,7 @@ resource "google_project_services" "vault_apis" {
     "container.googleapis.com",
     "containerregistry.googleapis.com",
     "stackdriver.googleapis.com",
+    "websecurityscanner.googleapis.com",
 
     # Enabled by a resource
     "compute.googleapis.com",
