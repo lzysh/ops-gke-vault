@@ -77,12 +77,11 @@ resource "google_service_account_key" "vault_key" {
 # IAM Policy for Projects Resource
 # https://www.terraform.io/docs/providers/google/r/google_project_iam.html#google_project_iam_member
 
-# This allows external dns to modify records in the tools project 
+# This allows external dns to modify records in the dns project 
 
-resource "google_project_iam_member" "vault_tools_project_iam" {
-  count   = "${length(var.service_account_tools_iam_roles)}"
-  project = "${var.tools_project}"
-  role    = "${element(var.service_account_tools_iam_roles, count.index)}"
+resource "google_project_iam_member" "vault_dns_project_iam" {
+  project = "${var.dns_project}"
+  role    = "roles/dns.admin"
   member  = "serviceAccount:${google_project.vault_project.number}-compute@developer.gserviceaccount.com"
 
   depends_on = ["google_project_services.vault_apis"]
@@ -197,6 +196,7 @@ resource "kubernetes_namespace" "vault_ns" {
   metadata {
     name = "vault"
   }
+  depends_on = ["google_container_cluster.vault_cluster"]
 }
 
 resource "kubernetes_namespace" "external_dns_ns" {
@@ -233,7 +233,7 @@ data "template_file" "external_dns" {
   template = "${file("${path.module}/../k8s/external-dns.yaml")}"
 
   vars {
-    tools_project = "${var.tools_project}"
+    dns_project = "${var.dns_project}"
   }
 }
 
@@ -256,6 +256,7 @@ data "template_file" "vault" {
   vars {
     num_vault_servers = "${var.num_vault_servers}"
     domain            = "${var.domain}"
+    host              = "${var.host}"
   }
 }
 
@@ -396,5 +397,5 @@ output "token_decrypt_command" {
 }
 
 output "vault_url" {
-  value = "https://vault.${var.domain}"
+  value = "https://${var.host}.${var.domain}"
 }

@@ -1,6 +1,13 @@
 # ops-gke-vault
 Operations code for running [HashiCorp Vault](https://www.vaultproject.io) on [Google Kubernetes Engine GKE](https://cloud.google.com/kubernetes-engine) with [Terraform](https://www.terraform.io)
 # IaC Development Setup on Linux
+
+## Syntax
+YAML: [yamllint](https://github.com/adrienverge/yamllint)
+
+Terraform: [vim-terraform](https://github.com/hashivim/vim-terraform)
+
+Markdown:
 ## Install Google Cloud SDK
 ```none
 curl https://sdk.cloud.google.com | bash
@@ -61,7 +68,7 @@ cp local.tfvars.EXAMPLE local.tfvars
 ## Terraform Plan & Apply
 ```none
 random=$RANDOM
-terraform plan -out="plan.out" -var-file="local.tfvars" -var="project=ops-vault-${random}-sb"
+terraform plan -out="plan.out" -var-file="local.tfvars" -var="project=ops-vault-${random}-sb" -var="host=vault-${random}"
 terraform apply "plan.out"
 ```
 It will take about 5-10 minutes after terraform apply is successful for the Vault instance to be accessible. Ingress is doing its thing, DNS is being propagated and SSL certificates are being issued.

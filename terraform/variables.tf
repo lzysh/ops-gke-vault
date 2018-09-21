@@ -15,15 +15,6 @@ variable "region" {
   default = "us-east4"
 }
 
-variable "service_account_tools_iam_roles" {
-  type = "list"
-
-  default = [
-    "roles/storage.objectViewer",
-    "roles/dns.admin",
-  ]
-}
-
 variable "storage_bucket_roles" {
   type = "list"
 
@@ -48,7 +39,7 @@ variable "machine_type" {
 
 variable "kubernetes_version" {
   type    = "string"
-  default = "1.10.7-gke.1"
+  default = "1.10.7-gke.2"
 }
 
 variable "kubernetes_logging_service" {
@@ -85,7 +76,11 @@ variable "domain" {
   type = "string"
 }
 
-variable "tools_project" {
+variable "dns_project" {
+  type = "string"
+}
+
+variable "host" {
   type = "string"
 }
 
@@ -98,5 +93,5 @@ variable "lets_encrypt_api" {
 }
 
 variable "lets_encrypt_email" {
-  type    = "string"
+  type = "string"
 }

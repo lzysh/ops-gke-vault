@@ -20,85 +20,85 @@ spec:
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: app
-                operator: In
-                values: ['vault']
-            topologyKey: kubernetes.io/hostname
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values: ['vault']
+              topologyKey: kubernetes.io/hostname
       terminationGracePeriodSeconds: 10
       containers:
-      - name: vault-init
-        image: registry.hub.docker.com/sethvargo/vault-init:0.1.1
-        env:
-        - name: CHECK_INTERVAL
-          value: "30"
-        - name: GCS_BUCKET_NAME
-          valueFrom:
-            configMapKeyRef:
-              name: vault
-              key: gcs_bucket_name
-        - name: KMS_KEY_ID
-          valueFrom:
-            configMapKeyRef:
-              name: vault
-              key: kms_key_id
-      - name: vault
-        image: registry.hub.docker.com/library/vault:0.11.1
-        args: ['server']
-        securityContext:
-          capabilities:
-            add: ['IPC_LOCK']
-        ports:
-        - containerPort: 8200
-          name: vault-port
-          protocol: TCP
-        - containerPort: 8201
-          name: cluster-port
-          protocol: TCP
-        resources:
-          requests:
-            cpu: '500m'
-            memory: '1Gi'
-        volumeMounts:
-        - name: vault-tls
-          mountPath: /etc/vault/tls
-        env:
-        - name: POD_IP_ADDR
-          valueFrom:
-            fieldRef:
-              fieldPath: status.podIP
-        - name: GCS_BUCKET_NAME
-          valueFrom:
-            configMapKeyRef:
-              name: vault
-              key: gcs_bucket_name
-        - name: VAULT_LOCAL_CONFIG
-          value: |
-            api_addr     = "https://vault.${domain}"
-            cluster_addr = "https://$(POD_IP_ADDR):8201"
-            ui = true
-            storage "gcs" {
-              bucket     = "$(GCS_BUCKET_NAME)"
-              ha_enabled = "true"
-            }
-            listener "tcp" {
-              address       = "0.0.0.0:8200"
-              tls_cert_file = "/etc/vault/tls/tls.crt"
-              tls_key_file  = "/etc/vault/tls/tls.key"
-              tls_disable_client_certs = true
-            }
-        readinessProbe:
-          httpGet:
-            path: /v1/sys/health?standbyok=true
-            port: 8200
-            scheme: HTTPS
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: vault-init
+          image: registry.hub.docker.com/sethvargo/vault-init:0.1.1
+          env:
+            - name: CHECK_INTERVAL
+              value: "30"
+            - name: GCS_BUCKET_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: vault
+                  key: gcs_bucket_name
+            - name: KMS_KEY_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: vault
+                  key: kms_key_id
+        - name: vault
+          image: registry.hub.docker.com/library/vault:0.11.1
+          args: ['server']
+          securityContext:
+            capabilities:
+              add: ['IPC_LOCK']
+          ports:
+            - containerPort: 8200
+              name: vault-port
+              protocol: TCP
+            - containerPort: 8201
+              name: cluster-port
+              protocol: TCP
+          resources:
+            requests:
+              cpu: '500m'
+              memory: '1Gi'
+          volumeMounts:
+            - name: vault-tls
+              mountPath: /etc/vault/tls
+          env:
+            - name: POD_IP_ADDR
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: GCS_BUCKET_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: vault
+                  key: gcs_bucket_name
+            - name: VAULT_LOCAL_CONFIG
+              value: |
+                api_addr     = "https://${host}.${domain}"
+                cluster_addr = "https://$(POD_IP_ADDR):8201"
+                ui = true
+                storage "gcs" {
+                  bucket     = "$(GCS_BUCKET_NAME)"
+                  ha_enabled = "true"
+                }
+                listener "tcp" {
+                  address       = "0.0.0.0:8200"
+                  tls_cert_file = "/etc/vault/tls/tls.crt"
+                  tls_key_file  = "/etc/vault/tls/tls.key"
+                  tls_disable_client_certs = true
+                }
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/health?standbyok=true
+              port: 8200
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            periodSeconds: 5
       volumes:
-      - name: vault-tls
-        secret:
-          secretName: vault-tls
+        - name: vault-tls
+          secret:
+            secretName: vault-tls
 
 ---
 apiVersion: v1
@@ -129,20 +129,20 @@ metadata:
   namespace: vault
   annotations:
     kubernetes.io/tls-acme: "true"
-    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.class: gce
     kubernetes.io/ingress.allow-http: "true"
     certmanager.k8s.io/cluster-issuer: letsencrypt
     certmanager.k8s.io/acme-http01-edit-in-place: "true"
 spec:
-  tls:
-  - hosts:
-    - vault.${domain}
-    secretName: vault-tls
   rules:
-  - host: vault.${domain}
-    http:
-      paths:
-      - path: /*
-        backend:
-          serviceName: vault-http
-          servicePort: 8200
+    - host: ${host}.${domain}
+      http:
+        paths:
+          - path: /*
+            backend:
+              serviceName: vault-http
+              servicePort: 8200
+  tls:
+    - secretName: vault-tls
+      hosts:
+        - ${host}.${domain}

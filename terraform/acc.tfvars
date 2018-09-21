@@ -2,13 +2,13 @@
 billing_id = "XXXXXX-XXXXXX-XXXXXX"
 
 # Sandbox Folder ID (in your team hierarchy)
-folder_id = "XXXXXXXXXXXX"
+folder_id = "XXXXXXXXXXX"
 
 # Domain Name
-domain = "domain.com"
+domain = "acc.lzy.sh"
 
 # Google Project ID for Cloud DNS
-dns_project = "my-dns-project"
+dns_project = "tst-tools-prod"
 
 # Email for Let's Encrypt Notifications
-lets_encrypt_email = "no-reply@domain.com"
+lets_encrypt_email = "no-reply@lzy.sh"

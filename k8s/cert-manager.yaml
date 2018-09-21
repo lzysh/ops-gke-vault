@@ -13,15 +13,31 @@ metadata:
   labels:
     app: cert-manager
 rules:
-  - apiGroups: ["certmanager.k8s.io"]
-    resources: ["certificates", "issuers", "clusterissuers"]
-    verbs: ["*"]
-  - apiGroups: [""]
-    resources: ["endpoints", "configmaps", "secrets", "events", "services", "pods"]
-    verbs: ["*"]
-  - apiGroups: ["extensions"]
-    resources: ["ingresses"]
-    verbs: ["*"]
+  - apiGroups:
+      - certmanager.k8s.io
+    resources:
+      - certificates
+      - issuers
+      - clusterissuers
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - endpoints
+      - configmaps
+      - secrets
+      - events
+      - services
+      - pods
+    verbs:
+      - "*"
+  - apiGroups:
+      - extensions
+    resources:
+      - ingresses
+    verbs:
+      - "*"
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -35,9 +51,9 @@ roleRef:
   kind: ClusterRole
   name: cert-manager
 subjects:
-- kind: ServiceAccount
-  name: cert-manager
-  namespace: cert-manager
+  - kind: ServiceAccount
+    name: cert-manager
+    namespace: cert-manager
 
 ---
 apiVersion: apps/v1beta1
@@ -63,15 +79,15 @@ spec:
         - name: cert-manager
           image: quay.io/jetstack/cert-manager-controller:v0.5.0
           args:
-          - --cluster-resource-namespace=$(POD_NAMESPACE)
-          - --leader-election-namespace=$(POD_NAMESPACE)
-          - --default-issuer-name=letsencrypt
-          - --default-issuer-kind=ClusterIssuer
+            - --cluster-resource-namespace=$(POD_NAMESPACE)
+            - --leader-election-namespace=$(POD_NAMESPACE)
+            - --default-issuer-name=letsencrypt
+            - --default-issuer-kind=ClusterIssuer
           env:
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           resources:
             requests:
               cpu: 10m
@@ -136,14 +152,10 @@ metadata:
   namespace: cert-manager
 spec:
   acme:
-    # The ACME server URL
     server: https://${lets_encrypt_api}/directory
-    # Email address used for ACME registration
     email: ${lets_encrypt_email}
-    # Name of a secret used to store the ACME account private key
     privateKeySecretRef:
       name: letsencrypt-key
-    # Enable the HTTP-01 challenge provider
     http01: {}
 
 ---
