@@ -20,7 +20,7 @@ pipelines:
       GOOGLE_TOOLS_PROJECT: ops-tools-prod
     lock_behavior: unlockWhenFinished
     stages:
-      - plan:
+      - infra-plan:
           jobs:
             run:
               elastic_profile_id: k8s-gcloud-pre-prod
@@ -40,8 +40,8 @@ pipelines:
                     arguments:
                       - -c
                       - >-
-                        terraform workspace select shared-vault-acc ||
-                        terraform workspace new shared-vault-acc
+                        terraform workspace select shared-vault-infra-acc ||
+                        terraform workspace new shared-vault-infra-acc
                 - exec:
                     command: bash
                     working_directory: terraform
@@ -50,9 +50,6 @@ pipelines:
                       - terraform plan
                         -out="plan.out"
                         -var-file="acc.tfvars"
-                        -var="project=shared-vault-acc"
-                        -var="host=vault"
-                        -var="dns_project=tst-tools-prod"
                 - exec:
                     command: bash
                     arguments:
@@ -62,8 +59,8 @@ pipelines:
                 - build:
                     source: terraform.tar.gz
                     destination: artifacts/
-      - apply:
-          approval: 
+      - infra-apply:
+          approval:
             type: manual
             roles:
               - vault-operator
@@ -73,7 +70,7 @@ pipelines:
               tasks:
                 - fetch:
                     pipeline: vault-acc
-                    stage: plan
+                    stage: infra-plan
                     job: run
                     is_file: "yes"
                     source: artifacts/terraform.tar.gz
@@ -95,6 +92,128 @@ pipelines:
                     arguments:
                       - -c
                       - terraform apply "plan.out"
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar cfvzp terraform.tar.gz terraform
+              artifacts:
+                - build:
+                    source: terraform.tar.gz
+                    destination: artifacts/
+
+      - vault-plan:
+          jobs:
+            run:
+              elastic_profile_id: k8s-gcloud-pre-prod
+              tasks:
+                - fetch:
+                    pipeline: vault-acc
+                    stage: infra-apply
+                    job: run
+                    is_file: "yes"
+                    source: artifacts/terraform.tar.gz
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar xfvzp terraform.tar.gz
+                - exec:
+                    command: bash
+                    working_directory: terraform/vault
+                    arguments:
+                      - -c
+                      - >-
+                        terraform init
+                        -backend-config="bucket=${GOOGLE_TOOLS_PROJECT}-pre-prod_tf_state"
+                        -backend-config="project=${GOOGLE_TOOLS_PROJECT}"
+                - exec:
+                    command: bash
+                    working_directory: terraform/vault
+                    arguments:
+                      - -c
+                      - >-
+                        terraform workspace select shared-vault-acc ||
+                        terraform workspace new shared-vault-acc
+                - exec:
+                    command: bash
+                    working_directory: terraform/vault
+                    arguments:
+                      - -c
+                      - >-
+                        terraform plan
+                        -out="plan.out"
+                        -var="url=`cd ..;terraform output url`"
+                        -var="root_token=`cd ..;terraform output root_token`"
+                        -var="project=`cd ..;terraform output project`"
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar cfvzp terraform.tar.gz terraform
+              artifacts:
+                - build:
+                    source: terraform.tar.gz
+                    destination: artifacts/
+      - vault-apply:
+          approval:
+            type: manual
+            roles:
+              - vault-operator
+          jobs:
+            run:
+              elastic_profile_id: k8s-gcloud-pre-prod
+              tasks:
+                - fetch:
+                    pipeline: vault-acc
+                    stage: vault-plan
+                    job: run
+                    is_file: "yes"
+                    source: artifacts/terraform.tar.gz
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar xfvzp terraform.tar.gz
+                - exec:
+                    command: bash
+                    working_directory: terraform/vault
+                    arguments:
+                      - -c
+                      - terraform apply "plan.out"
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar cfvzp terraform.tar.gz terraform
+              artifacts:
+                - build:
+                    source: terraform.tar.gz
+                    destination: artifacts/
+
+      - smoke-test:
+          jobs:
+            run:
+              elastic_profile_id: k8s-gcloud-pre-prod
+              tasks:
+                - fetch:
+                    pipeline: vault-acc
+                    stage: vault-apply
+                    job: run
+                    is_file: "yes"
+                    source: artifacts/terraform.tar.gz
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar xfvzp terraform.tar.gz
+                - exec:
+                    command: bash
+                    working_directory: test
+                    arguments:
+                      - -c
+                      - ./smoke.sh
+
 
   vault-exp:
     group: vault
@@ -104,11 +223,11 @@ pipelines:
         git: git@github.com:lzysh/ops-gke-vault.git
       pipeline-vault-acc:
         pipeline: vault-acc
-        stage: apply
+        stage: infra-apply
     environment_variables:
       GOOGLE_TOOLS_PROJECT: ops-tools-prod
     stages:
-      - plan:
+      - infra-plan:
           jobs:
             run:
               elastic_profile_id: k8s-gcloud-pre-prod
@@ -142,9 +261,7 @@ pipelines:
                         terraform plan
                         -out="plan.out"
                         -var-file="exp.tfvars"
-                        -var="project=shared-vault-${GO_PIPELINE_COUNTER}-exp"
                         -var="host=vault-${GO_PIPELINE_COUNTER}"
-                        -var="dns_project=tst-tools-prod"
                 - exec:
                     command: bash
                     arguments:
@@ -154,14 +271,14 @@ pipelines:
                 - build:
                     source: terraform.tar.gz
                     destination: artifacts/
-      - apply:
+      - infra-apply:
           jobs:
             run:
               elastic_profile_id: k8s-gcloud-pre-prod
               tasks:
                 - fetch:
                     pipeline: vault-exp
-                    stage: plan
+                    stage: infra-plan
                     job: run
                     is_file: "yes"
                     source: artifacts/terraform.tar.gz
@@ -192,7 +309,8 @@ pipelines:
                 - build:
                     source: terraform.tar.gz
                     destination: artifacts/
-      - destroy:
+
+      - infra-destroy:
           # approval: manual
           jobs:
             run:
@@ -200,7 +318,7 @@ pipelines:
               tasks:
                 - fetch:
                     pipeline: vault-exp
-                    stage: apply
+                    stage: infra-apply
                     job: run
                     is_file: "yes"
                     source: artifacts/terraform.tar.gz
@@ -218,10 +336,7 @@ pipelines:
                         terraform destroy
                         -force
                         -var-file="exp.tfvars"
-                        -var="project=shared-vault-${GO_PIPELINE_COUNTER}-exp"
                         -var="host=vault-${GO_PIPELINE_COUNTER}"
-                        -var="dns_project=tst-tools-prod"
-
 
   vault-prod:
     group: vault
@@ -231,12 +346,12 @@ pipelines:
         git: git@github.com:lzysh/ops-gke-vault.git
       pipeline-vault-acc:
         pipeline: vault-acc
-        stage: apply
+        stage: smoke-test
     environment_variables:
       GOOGLE_TOOLS_PROJECT: ops-tools-prod
     lock_behavior: unlockWhenFinished
     stages:
-      - plan:
+      - infra-plan:
           jobs:
             run:
               elastic_profile_id: k8s-gcloud-prod
@@ -255,8 +370,8 @@ pipelines:
                     working_directory: terraform
                     arguments:
                       - -c
-                      - terraform workspace select shared-vault-prod ||
-                        terraform workspace new shared-vault-prod
+                      - terraform workspace select shared-vault-infra-prod ||
+                        terraform workspace new shared-vault-infra-prod
                 - exec:
                     command: bash
                     working_directory: terraform
@@ -265,9 +380,6 @@ pipelines:
                       - terraform plan
                         -out="plan.out"
                         -var-file="prod.tfvars"
-                        -var="project=shared-vault-prod"
-                        -var="host=vault"
-                        -var="dns_project=ops-tools-prod"
                 - exec:
                     command: bash
                     arguments:
@@ -277,8 +389,9 @@ pipelines:
                 - build:
                     source: terraform.tar.gz
                     destination: artifacts/
-      - apply:
-          approval: 
+
+      - infra-apply:
+          approval:
             type: manual
             roles:
               - vault-operator
@@ -288,7 +401,7 @@ pipelines:
               tasks:
                 - fetch:
                     pipeline: vault-prod
-                    stage: plan
+                    stage: infra-plan
                     job: run
                     is_file: "yes"
                     source: artifacts/terraform.tar.gz
@@ -309,3 +422,125 @@ pipelines:
                     arguments:
                       - -c
                       - terraform apply "plan.out"
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar cfvzp terraform.tar.gz terraform
+              artifacts:
+                - build:
+                    source: terraform.tar.gz
+                    destination: artifacts/
+
+      - vault-plan:
+          jobs:
+            run:
+              elastic_profile_id: k8s-gcloud-prod
+              tasks:
+                - fetch:
+                    pipeline: vault-prod
+                    stage: infra-apply
+                    job: run
+                    is_file: "yes"
+                    source: artifacts/terraform.tar.gz
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar xfvzp terraform.tar.gz
+                - exec:
+                    command: bash
+                    working_directory: terraform/vault
+                    arguments:
+                      - -c
+                      - >-
+                        terraform init
+                        -backend-config="bucket=${GOOGLE_TOOLS_PROJECT}_tf_state"
+                        -backend-config="project=${GOOGLE_TOOLS_PROJECT}"
+                - exec:
+                    command: bash
+                    working_directory: terraform/vault
+                    arguments:
+                      - -c
+                      - >-
+                        terraform workspace select shared-vault-prod ||
+                        terraform workspace new shared-vault-prod
+                - exec:
+                    command: bash
+                    working_directory: terraform/vault
+                    arguments:
+                      - -c
+                      - >-
+                        terraform plan
+                        -out="plan.out"
+                        -var="url=`cd ..;terraform output url`"
+                        -var="root_token=`cd ..;terraform output root_token`"
+                        -var="project=`cd ..;terraform output project`"
+                        -var="skip_tls_verify=false"
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar cfvzp terraform.tar.gz terraform
+              artifacts:
+                - build:
+                    source: terraform.tar.gz
+                    destination: artifacts/
+      - vault-apply:
+          approval:
+            type: manual
+            roles:
+              - vault-operator
+          jobs:
+            run:
+              elastic_profile_id: k8s-gcloud-prod
+              tasks:
+                - fetch:
+                    pipeline: vault-prod
+                    stage: vault-plan
+                    job: run
+                    is_file: "yes"
+                    source: artifacts/terraform.tar.gz
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar xfvzp terraform.tar.gz
+                - exec:
+                    command: bash
+                    working_directory: terraform/vault
+                    arguments:
+                      - -c
+                      - terraform apply "plan.out"
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar cfvzp terraform.tar.gz terraform
+              artifacts:
+                - build:
+                    source: terraform.tar.gz
+                    destination: artifacts/
+
+      - smoke-test:
+          jobs:
+            run:
+              elastic_profile_id: k8s-gcloud-prod
+              tasks:
+                - fetch:
+                    pipeline: vault-prod
+                    stage: vault-apply
+                    job: run
+                    is_file: "yes"
+                    source: artifacts/terraform.tar.gz
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - tar xfvzp terraform.tar.gz
+                - exec:
+                    command: bash
+                    working_directory: test
+                    arguments:
+                      - -c
+                      - ./smoke.sh -p

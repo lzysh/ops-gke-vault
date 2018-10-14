@@ -33,9 +33,9 @@ obs.lzy.sh.  SOA   21600  ns-cloud-a1.googledomains.com. cloud-dns-hostmaster.go
 ```
 This will show your NS record, grab the DATA and and create a NS record on your registrar. The next step needs to be completed by a user with DNS Administrator IAM role for the tools project.
 ```none
-gcloud --project ops-tools-prod dns record-sets transaction start -z=lzy-sh
-gcloud --project ops-tools-prod dns record-sets transaction add -z=lzy-sh --name="obs.lzy.sh." --type=NS --ttl=300 "ns-cloud-a1.googledomains.com." "ns-cloud-a2.googledomains.com." "ns-cloud-a3.googledomains.com." "ns-cloud-a4.googledomains.com."
-gcloud --project ops-tools-prod dns record-sets transaction execute -z=lzy-sh
+gcloud --project ops-tools-prod dns record-sets transaction start -z=lzy.sh
+gcloud --project ops-tools-prod dns record-sets transaction add -z=lzy.sh --name="obs.lzy.sh." --type=NS --ttl=300 "ns-cloud-a1.googledomains.com." "ns-cloud-a2.googledomains.com." "ns-cloud-a3.googledomains.com." "ns-cloud-a4.googledomains.com."
+gcloud --project ops-tools-prod dns record-sets transaction execute -z=lzy.sh
 ```
 ## Create Bucket for Terraform Remote State
 ```none
@@ -65,26 +65,42 @@ Create a `local.tfvars` file and edit to fit you needs:
 cp local.tfvars.EXAMPLE local.tfvars
 ```
 >NOTE: The folder_id variable will be the ID of the Sanbox folder your have the proper IAM roles set on.
-## Terraform Plan & Apply
+## Terraform Plan & Apply for Infrastructure
 ```none
 random=$RANDOM
-terraform plan -out="plan.out" -var-file="local.tfvars" -var="project=ops-vault-${random}-sb" -var="host=vault-${random}"
+team=ops
+terraform workspace new vault-infra
+terraform plan -out="plan.out" -var-file="local.tfvars" -var="prefix=${team}" -var="env=sb" -var="host=vault-${random}"
 terraform apply "plan.out"
 ```
-It will take about 5-10 minutes after terraform apply is successful for the Vault instance to be accessible. Ingress is doing its thing, DNS is being propagated and SSL certificates are being issued.
+It will take about 5-10 minutes after terraform apply for the Vault instance to be accessible. Ingress is doing its thing, DNS is being propagated and SSL certificates are being issued.
 
 The URL and command to decrypt the root token are in the Terraform output.
+
+## Terraform Plan & Apply for Vault
+```none
+cd vault
+terraform workspace new vault
+terraform plan -out="plan.out" -var="url=`cd ..;terraform output url`" -var="root_token=`cd ..;terraform output root_token`" -var="project=`cd ..;terraform output project`"
+terraform apply "plan.out"
+```
 
 ## Install Vault Locally 
 ```none
 curl -O https://releases.hashicorp.com/vault/0.11.1/vault_0.11.1_linux_amd64.zip
 sudo unzip vault_0.11.1_linux_amd64.zip -d /usr/local/bin
 ```
-## Vault Testing Examples
+## Vault Smoke Test:
 ```none
-export VAULT_ADDR="$(terraform output url)"
-export VAULT_SKIP_VERIFY=true (Use for testing only)
-export VAULT_TOKEN="$(decrypted token)"
+cd ../../test
+./smoke.sh
+```
+## Vault Manual Testing Examples
+```none
+export project=`cd ../terraform;terraform output project`
+export VAULT_ADDR=`cd ../terraform;terraform output url`
+export VAULT_SKIP_VERIFY=true
+vault login -method=gcp role=vault-testing service_account=vault-testing@${project}.iam.gserviceaccount.com project=${project}"
 ```
 Enable KV2
 ```none
@@ -131,6 +147,8 @@ username    admin
 ```
 ## Terraform Destroy
 ```none
-terraform destroy -var-file="local.tfvars" -var="project=ops-vault-${random}-sb"
+cd ../terraform/vault
+
+cd ..
+terraform destroy -var-file="local.tfvars" -var="prefix=${team}" -var="env=sb" -var="host=vault-${random}"
 ```
-*Some of the major differences in this fork is it's using external-dns to synchronize Kubernetes ingress resources with Google Cloud DNS as well as cert-manager to automate the management and issuance of TLS certificates from Let's Encrypt.*

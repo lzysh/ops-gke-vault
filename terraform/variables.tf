@@ -1,4 +1,8 @@
-variable "project" {
+variable "env" {
+  type = "string"
+}
+
+variable "prefix" {
   type = "string"
 }
 
@@ -13,6 +17,14 @@ variable "folder_id" {
 variable "region" {
   type    = "string"
   default = "us-east4"
+}
+
+variable "vault_jwt_sa_iam_roles" {
+  type = "list"
+
+  default = [
+    "roles/iam.serviceAccountTokenCreator",
+  ]
 }
 
 variable "storage_bucket_roles" {
@@ -39,7 +51,7 @@ variable "machine_type" {
 
 variable "kubernetes_version" {
   type    = "string"
-  default = "1.10.7-gke.2"
+  default = "1.10.7-gke.6"
 }
 
 variable "kubernetes_logging_service" {
@@ -94,4 +106,25 @@ variable "lets_encrypt_api" {
 
 variable "lets_encrypt_email" {
   type = "string"
+}
+
+variable "org_domain" {
+  type = "string"
+}
+
+variable "gocd_default_compute_sa" {
+  type = "string"
+}
+
+variable "team_sa" {
+  type = "list"
+
+  default = [
+    "team-a-dev",
+    "team-a-dev-admins",
+    "team-b-dev",
+    "team-b-dev-admins",
+    "vault-admins",
+    "vault-testing",
+  ]
 }

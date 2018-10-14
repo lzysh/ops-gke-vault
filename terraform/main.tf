@@ -5,8 +5,10 @@ provider "google" {
   #  version = "1.17.1"
 }
 
+provider "local" {}
+
 provider "kubernetes" {
-  version  = "1.2"
+  #  version  = "1.2"
   host     = "${google_container_cluster.vault_cluster.endpoint}"
   username = "${google_container_cluster.vault_cluster.master_auth.0.username}"
   password = "${google_container_cluster.vault_cluster.master_auth.0.password}"
@@ -16,12 +18,19 @@ provider "kubernetes" {
   cluster_ca_certificate = "${base64decode(google_container_cluster.vault_cluster.master_auth.0.cluster_ca_certificate)}"
 }
 
+# Random ID Resource
+# https://www.terraform.io/docs/providers/random/r/id.html
+resource "random_id" "random" {
+  prefix      = "tf"
+  byte_length = "3"
+}
+
 # Project Resource
 # https://www.terraform.io/docs/providers/google/r/google_project.html
 
 resource "google_project" "vault_project" {
-  name            = "${var.project}"
-  project_id      = "${var.project}"
+  name            = "${var.prefix}-vault-${random_id.random.hex}-${var.env}"
+  project_id      = "${var.prefix}-vault-${random_id.random.hex}-${var.env}"
   billing_account = "${var.billing_id}"
   folder_id       = "folders/${var.folder_id}"
 }
@@ -42,6 +51,7 @@ resource "google_project_services" "vault_apis" {
     "containerregistry.googleapis.com",
     "stackdriver.googleapis.com",
     "websecurityscanner.googleapis.com",
+    "iam.googleapis.com",
 
     # Enabled by a resource
     "compute.googleapis.com",
@@ -64,6 +74,38 @@ resource "google_project_services" "vault_apis" {
     "storage-api.googleapis.com",
     "storage-component.googleapis.com",
   ]
+}
+
+# Service Account Resource
+# https://www.terraform.io/docs/providers/google/r/google_service_account.html
+
+resource "google_service_account" "vault_jwt_sa" {
+  count        = "${length(var.team_sa)}"
+  account_id   = "${element(var.team_sa, count.index)}"
+  display_name = "Service Account for ${element(var.team_sa, count.index)} Vault JWT keys"
+  project      = "${google_project.vault_project.project_id}"
+
+  depends_on = ["google_project_services.vault_apis"]
+}
+
+# IAM policy for service account
+# https://www.terraform.io/docs/providers/google/r/google_service_account_iam.html
+
+resource "google_service_account_iam_member" "vault_jwt_sa_iam" {
+  count              = "${length(var.team_sa)}"
+  service_account_id = "projects/${google_project.vault_project.project_id}/serviceAccounts/${element(var.team_sa, count.index)}@${google_project.vault_project.project_id}.iam.gserviceaccount.com"
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "group:${element(var.team_sa, count.index)}@${var.org_domain}"
+
+  depends_on = ["google_service_account.vault_jwt_sa"]
+}
+
+resource "google_service_account_iam_member" "vault_jwt_sa_testing_iam" {
+  service_account_id = "projects/${google_project.vault_project.project_id}/serviceAccounts/vault-testing@${google_project.vault_project.project_id}.iam.gserviceaccount.com"
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${var.gocd_default_compute_sa}"
+
+  depends_on = ["google_service_account.vault_jwt_sa"]
 }
 
 # Service Account Key Resource
@@ -99,6 +141,16 @@ resource "google_storage_bucket" "vault_bucket" {
 
   versioning {
     enabled = true
+  }
+
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+
+    condition {
+      num_newer_versions = 3
+    }
   }
 
   depends_on = ["google_project_services.vault_apis"]
@@ -197,6 +249,7 @@ resource "kubernetes_namespace" "vault_ns" {
   metadata {
     name = "vault"
   }
+
   depends_on = ["google_container_cluster.vault_cluster"]
 }
 
@@ -231,7 +284,7 @@ resource "kubernetes_config_map" "vault_config_map" {
 # https://www.terraform.io/docs/providers/template/d/file.html
 
 data "template_file" "external_dns" {
-  template = "${file("${path.module}/../k8s/external-dns.yaml")}"
+  template = "${file("${path.module}/../kubernetes/external-dns.yaml")}"
 
   vars {
     dns_project = "${var.dns_project}"
@@ -239,7 +292,7 @@ data "template_file" "external_dns" {
 }
 
 data "template_file" "cert_manager" {
-  template = "${file("${path.module}/../k8s/cert-manager.yaml")}"
+  template = "${file("${path.module}/../kubernetes/cert-manager.yaml")}"
 
   vars {
     lets_encrypt_api   = "${var.lets_encrypt_api}"
@@ -248,11 +301,11 @@ data "template_file" "cert_manager" {
 }
 
 data "template_file" "temp_tls" {
-  template = "${file("${path.module}/../k8s/temp-tls.yaml")}"
+  template = "${file("${path.module}/../kubernetes/temp-tls.yaml")}"
 }
 
 data "template_file" "vault" {
-  template = "${file("${path.module}/../k8s/vault.yaml")}"
+  template = "${file("${path.module}/../kubernetes/vault.yaml")}"
 
   vars {
     num_vault_servers = "${var.num_vault_servers}"
@@ -377,12 +430,24 @@ for i in $(seq -s " " 1 15); do
   sleep $i
   if [ $(kubectl get pod --namespace=vault | grep vault | grep Running | wc -l) -eq ${var.num_vault_servers} ]; then
     echo "Pods are Running"
-    exit 0
+    success=0
+    for i in $(seq -s " " 1 50); do
+      sleep $i
+      if [ $(curl -sk -o /dev/null -w "%{http_code}" \
+      https://${var.host}.${var.domain}/v1/sys/health?standbyok=true) -eq 200 ]; then
+        success=`expr $success + 1`
+        if [ "$${success}" = 5 ]; then
+          echo "Vault is Running"
+          exit 0
+        fi
+      fi
+    done
+    echo "Vault is not ready"
+    exit 1
   fi
 done
-
-echo "Pods are not ready after 2m"
-exit 1
+echo "Pods are not ready"
+exit
     EOF
   }
 
@@ -393,10 +458,41 @@ exit 1
   ]
 }
 
-output "token_decrypt_command" {
-  value = "gsutil cat gs://${google_storage_bucket.vault_bucket.name}/root-token.enc | base64 --decode | gcloud kms decrypt --project ${google_project.vault_project.project_id} --location global --keyring ${google_kms_key_ring.vault_kms.name} --key ${google_kms_crypto_key.vault_key.name} --ciphertext-file - --plaintext-file -"
+# Download the encrypted root token to disk
+data "google_storage_object_signed_url" "root-token" {
+  bucket = "${google_storage_bucket.vault_bucket.name}"
+  path   = "root-token.enc"
+
+  credentials = "${base64decode(google_service_account_key.vault_key.private_key)}"
 }
 
-output "vault_url" {
+# Download the encrypted file
+data "http" "root-token" {
+  url = "${data.google_storage_object_signed_url.root-token.signed_url}"
+
+  depends_on = ["null_resource.vault"]
+}
+
+# Decrypt the secret
+data "google_kms_secret" "root-token" {
+  crypto_key = "${google_kms_crypto_key.vault_key.id}"
+  ciphertext = "${data.http.root-token.body}"
+}
+
+output "token_decrypt_command" {
+  sensitive = true
+  value     = "gsutil cat gs://${google_storage_bucket.vault_bucket.name}/root-token.enc | base64 --decode | gcloud kms decrypt --project ${google_project.vault_project.project_id} --location global --keyring ${google_kms_key_ring.vault_kms.name} --key ${google_kms_crypto_key.vault_key.name} --ciphertext-file - --plaintext-file -"
+}
+
+output "root_token" {
+  sensitive = true
+  value     = "${data.google_kms_secret.root-token.plaintext}"
+}
+
+output "project" {
+  value = "${google_project.vault_project.project_id}"
+}
+
+output "url" {
   value = "https://${var.host}.${var.domain}"
 }
