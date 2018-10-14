@@ -33,9 +33,9 @@ obs.lzy.sh.  SOA   21600  ns-cloud-a1.googledomains.com. cloud-dns-hostmaster.go
 ```
 This will show your NS record, grab the DATA and and create a NS record on your registrar. The next step needs to be completed by a user with DNS Administrator IAM role for the tools project.
 ```none
-gcloud --project ops-tools-prod dns record-sets transaction start -z=lzy.sh
-gcloud --project ops-tools-prod dns record-sets transaction add -z=lzy.sh --name="obs.lzy.sh." --type=NS --ttl=300 "ns-cloud-a1.googledomains.com." "ns-cloud-a2.googledomains.com." "ns-cloud-a3.googledomains.com." "ns-cloud-a4.googledomains.com."
-gcloud --project ops-tools-prod dns record-sets transaction execute -z=lzy.sh
+gcloud --project ops-tools-prod dns record-sets transaction start -z=lzy-sh
+gcloud --project ops-tools-prod dns record-sets transaction add -z=lzy-sh --name="obs.lzy.sh." --type=NS --ttl=300 "ns-cloud-a1.googledomains.com." "ns-cloud-a2.googledomains.com." "ns-cloud-a3.googledomains.com." "ns-cloud-a4.googledomains.com."
+gcloud --project ops-tools-prod dns record-sets transaction execute -z=lzy-sh
 ```
 ## Create Bucket for Terraform Remote State
 ```none
